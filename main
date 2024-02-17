@@ -1,0 +1,136 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+# Step 1: Load the housing price data
+housing_data = pd.read_csv('HousingDataset.csv')
+
+# Step 2: Feature Selection
+X = housing_data.drop(columns=['Unnamed: 0', 'price'
+                               ])  # Drop index column and 'price' column
+y = housing_data['price']  # Select the 'price' column as the target variable
+
+# Step 3: Split the Data
+X_train, X_test, y_train, y_test = train_test_split(X,
+                                                    y,
+                                                    test_size=0.2,
+                                                    random_state=42)
+
+# Step 4: Define preprocessing pipelines
+numeric_features = ['area', 'bedrooms', 'bathrooms', 'stories', 'parking']
+categorical_features = [
+    'mainroad', 'guestroom', 'basement', 'hotwaterheating', 'airconditioning',
+    'prefarea', 'furnishingstatus'
+]
+
+numeric_transformer = Pipeline(
+    steps=[('imputer',
+            SimpleImputer(strategy='median')), ('scaler', StandardScaler())])
+
+categorical_transformer = Pipeline(
+    steps=[('imputer', SimpleImputer(strategy='constant', fill_value='missing')
+            ), ('onehot', OneHotEncoder(handle_unknown='ignore'))])
+
+preprocessor = ColumnTransformer(transformers=[(
+    'num', numeric_transformer,
+    numeric_features), ('cat', categorical_transformer, categorical_features)])
+
+# Step 5: Define the model
+model = Pipeline(steps=[('preprocessor',
+                         preprocessor), ('regressor', LinearRegression())])
+
+# Step 6: Train the Model
+model.fit(X_train, y_train)
+
+# Step 6: Train the Model
+model.fit(X_train, y_train)
+
+
+# Step 7: Evaluate the Model
+y_pred = model.predict(X_test)
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+# Step 7: Get user input for new house data
+print("Enter the details of the house:")
+area = float(input("Area (in square units): "))
+bedrooms = int(input("Number of bedrooms: "))
+bathrooms = int(input("Number of bathrooms: "))
+stories = int(input("Number of stories: "))
+mainroad = input("Main road access (yes/no): ")
+guestroom = input("Guest room (yes/no): ")
+basement = input("Basement (yes/no): ")
+hotwaterheating = input("Hot water heating (yes/no): ")
+airconditioning = input("Air conditioning (yes/no): ")
+parking = int(input("Number of parking spots: "))
+prefarea = input("Preferred area (yes/no): ")
+furnishingstatus = input(
+    "Furnishing status (semi-furnished/furnished/unfurnished): ")
+
+# Step 8: Predict house price for the new data
+new_house_data = pd.DataFrame({
+    'area': [area],
+    'bedrooms': [bedrooms],
+    'bathrooms': [bathrooms],
+    'stories': [stories],
+    'mainroad': [mainroad],
+    'guestroom': [guestroom],
+    'basement': [basement],
+    'hotwaterheating': [hotwaterheating],
+    'airconditioning': [airconditioning],
+    'parking': [parking],
+    'prefarea': [prefarea],
+    'furnishingstatus': [furnishingstatus]
+})
+
+predicted_price = model.predict(new_house_data)
+
+# Print the predicted price
+print("\nPredicted House Price: ${:,.2f}".format(predicted_price[0]))
+
+print("Mean Absolute Error:", mae)
+print("Mean Squared Error:", mse)
+print("R-squared:", r2)
+
+# Visualize actual vs predicted house prices
+plt.figure(figsize=(10, 6))
+plt.scatter(y_test, y_pred, color='blue', label='Actual vs Predicted')
+plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)],
+         color='red',
+         linestyle='--',
+         label='Linear Regression Model')
+plt.xlabel('Actual House Price')
+plt.ylabel('Predicted House Price')
+plt.title('Actual vs Predicted House Prices')
+plt.legend()
+plt.show()
+
+
+# Extract coefficients from the trained model
+numeric_features_importance = model.named_steps['regressor'].coef_[:len(numeric_features)]
+categorical_features_importance = model.named_steps['regressor'].coef_[len(numeric_features):]
+
+# Visualize Feature Importance
+plt.figure(figsize=(10, 6))
+plt.barh(numeric_features, numeric_features_importance, color='skyblue')
+plt.xlabel('Coefficient Value')
+plt.ylabel('Numeric Features')
+plt.title('Numeric Features Importance')
+plt.show()
+
+plt.figure(figsize=(10, 6))
+plt.barh(categorical_features,
+         categorical_features_importance,
+         color='lightgreen')
+plt.xlabel('Coefficient Value')
+plt.ylabel('Categorical Features')
+plt.title('Categorical Features Importance')
+plt.show()
